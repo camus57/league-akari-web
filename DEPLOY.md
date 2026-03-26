@@ -54,17 +54,28 @@ https://YOUR_USERNAME.github.io/league-akari-web/
 
 ## 使用说明
 
-1. 访问 [Riot Developer Portal](https://developer.riotgames.com/)
-2. 登录获取 **Personal API Key**
-3. 在网站上输入：
+### 国服查询（无需 API Key）
+
+1. 选择 **国服** 选项卡
+2. 选择大区（如：艾欧尼亚、黑色玫瑰等）
+3. 输入召唤师名称
+4. 点击查询
+
+### 国际服查询
+
+1. 选择 **国际服** 选项卡
+2. 访问 [Riot Developer Portal](https://developer.riotgames.com/)
+3. 登录获取 **Personal API Key**
+4. 在网站上输入：
    - Riot ID (格式：游戏名#标签，例如：Faker#KR1)
    - 选择赛区
    - 输入 API Key
-4. 点击查询即可查看战绩
+5. 点击查询
 
 ## 注意事项
 
-- **API Key 限制**: 开发用 Key 有速率限制 (20 请求/秒，100 请求/2 分钟)
+- **国服**：无需 API Key，直接查询全部 34 个大区
+- **国际服 API Key 限制**: 开发用 Key 有速率限制 (20 请求/秒，100 请求/2 分钟)
 - **不要将 API Key 提交到 Git**: `.env` 文件已在 `.gitignore` 中
 - **生产环境**: 如需正式部署，请申请 Production API Key
 
@@ -81,12 +92,14 @@ export default defineConfig({
 
 ## 功能特性
 
-- ✅ 支持多赛区查询 (韩服、日服、欧服、美服、亚服)
+- ✅ **国服支持** - 全部 34 个大区，无需 API Key
+- ✅ **国际服支持** - 韩服、日服、欧服、美服、亚服
 - ✅ 显示召唤师信息和等级
 - ✅ 显示排位赛段位和胜率
-- ✅ 展示近期 5 场比赛详情
+- ✅ 展示近期比赛详情（国服 10 场，国际服 5 场）
 - ✅ 显示英雄、KDA、装备、补刀、伤害等数据
 - ✅ 响应式设计，支持移动端
+- ✅ 一键切换国服/国际服
 
 ## 技术栈
 
