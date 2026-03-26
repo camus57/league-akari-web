@@ -4,10 +4,10 @@
 
 ## 功能
 
-- 🔍 通过 Riot ID 查询召唤师信息
+- 🔍 **国服查询** - 支持全部 34 个国服大区，无需 API Key
+- 🌏 **国际服查询** - 支持韩服、日服、欧服、美服、亚服等
 - 📊 查看近期比赛历史
-- 🏆 显示排位赛信息
-- 🌏 支持多个赛区
+- 🏆 显示排位赛信息和胜率
 
 ## 技术栈
 
@@ -17,7 +17,11 @@
 
 ## 快速开始
 
-### 获取 API Key
+### 国服查询
+
+国服查询**不需要 API Key**，直接选择大区和输入召唤师名称即可查询。
+
+### 国际服查询
 
 1. 访问 [Riot Developer Portal](https://developer.riotgames.com/)
 2. 登录你的 Riot 账号
@@ -52,7 +56,15 @@ git push origin main
 
 ## API 说明
 
-### 端点路由
+### 国服 API
+
+使用腾讯官方 API 和掌盟接口，无需 API Key。
+
+### 国际服 API
+
+使用 Riot Games API v5。
+
+#### 端点路由
 
 - **美洲**: americas.api.riotgames.com
 - **欧洲**: europe.api.riotgames.com
@@ -60,7 +72,7 @@ git push origin main
 - **韩国**: kr.api.riotgames.com
 - **日本**: jp.api.riotgames.com
 
-### 查询流程
+#### 查询流程
 
 1. 使用 Riot ID (gameName#tagLine) 调用 Account API 获取 PUUID
 2. 使用 PUUID 调用 Summoner API 获取召唤师信息
@@ -69,7 +81,8 @@ git push origin main
 
 ## 注意事项
 
-- 开发环境 API Key 有速率限制 (20 请求/秒)
+- 国服：无需 API Key，直接查询
+- 国际服：开发环境 API Key 有速率限制 (20 请求/秒)
 - 生产环境需要申请 Production Key
 - 需要遵守 Riot API 使用政策
 

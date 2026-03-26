@@ -22,8 +22,71 @@
         <div class="bg-dark-200 rounded-xl p-6 shadow-lg">
           <h2 class="text-xl font-semibold mb-4">查询召唤师</h2>
           
-          <!-- Region Select -->
+          <!-- Region Type Select -->
           <div class="mb-4">
+            <label class="block text-sm text-gray-400 mb-2">选择服务器类型</label>
+            <div class="flex space-x-4">
+              <button
+                @click="serverType = 'cn'"
+                :class="['flex-1 py-3 px-4 rounded-lg font-semibold transition-colors', 
+                  serverType === 'cn' ? 'bg-hextech-100 text-dark-100' : 'bg-dark-300 text-gray-400 hover:bg-dark-200']"
+              >
+                🇨🇳 国服
+              </button>
+              <button
+                @click="serverType = 'intl'"
+                :class="['flex-1 py-3 px-4 rounded-lg font-semibold transition-colors', 
+                  serverType === 'intl' ? 'bg-hextech-100 text-dark-100' : 'bg-dark-300 text-gray-400 hover:bg-dark-200']"
+              >
+                🌏 国际服
+              </button>
+            </div>
+          </div>
+
+          <!-- CN Server Select -->
+          <div v-if="serverType === 'cn'" class="mb-4">
+            <label class="block text-sm text-gray-400 mb-2">选择大区</label>
+            <select 
+              v-model="selectedCnServer"
+              class="w-full bg-dark-300 border border-dark-300 rounded-lg px-4 py-3 focus:outline-none focus:border-hextech-100"
+            >
+              <option v-for="server in cnServers" :key="server.id" :value="server.id">
+                {{ server.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Summoner Name Input -->
+          <div class="mb-4">
+            <label class="block text-sm text-gray-400 mb-2">
+              {{ serverType === 'cn' ? '召唤师名称' : 'Riot ID (游戏名#标签)' }}
+            </label>
+            <input 
+              v-model="summonerName"
+              type="text" 
+              :placeholder="serverType === 'cn' ? '例如：TheShy' : '例如：Faker#KR1'"
+              class="w-full bg-dark-300 border border-dark-300 rounded-lg px-4 py-3 focus:outline-none focus:border-hextech-100"
+              @keyup.enter="searchSummoner"
+            />
+            <p v-if="serverType === 'intl'" class="text-xs text-gray-500 mt-1">格式：游戏名#标签 (区分大小写)</p>
+          </div>
+
+          <!-- API Key Input (Intl only) -->
+          <div v-if="serverType === 'intl'" class="mb-4">
+            <label class="block text-sm text-gray-400 mb-2">Riot API Key</label>
+            <input 
+              v-model="apiKey"
+              type="password" 
+              placeholder="输入你的 Riot API Key"
+              class="w-full bg-dark-300 border border-dark-300 rounded-lg px-4 py-3 focus:outline-none focus:border-hextech-100"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              在 <a href="https://developer.riotgames.com/" target="_blank" class="text-hextech-100 hover:underline">Riot Developer Portal</a> 获取
+            </p>
+          </div>
+
+          <!-- Intl Region Select -->
+          <div v-if="serverType === 'intl'" class="mb-4">
             <label class="block text-sm text-gray-400 mb-2">选择赛区</label>
             <select 
               v-model="selectedRegion"
@@ -35,33 +98,6 @@
               <option value="americas">美洲 (NA/BR/LAN/LAS)</option>
               <option value="asia">亚洲 (SG/PH/TW/VN/TH)</option>
             </select>
-          </div>
-
-          <!-- Riot ID Input -->
-          <div class="mb-4">
-            <label class="block text-sm text-gray-400 mb-2">Riot ID (游戏名#标签)</label>
-            <input 
-              v-model="riotId"
-              type="text" 
-              placeholder="例如：Faker#KR1"
-              class="w-full bg-dark-300 border border-dark-300 rounded-lg px-4 py-3 focus:outline-none focus:border-hextech-100"
-              @keyup.enter="searchSummoner"
-            />
-            <p class="text-xs text-gray-500 mt-1">格式：游戏名#标签 (区分大小写)</p>
-          </div>
-
-          <!-- API Key Input -->
-          <div class="mb-4">
-            <label class="block text-sm text-gray-400 mb-2">Riot API Key</label>
-            <input 
-              v-model="apiKey"
-              type="password" 
-              placeholder="输入你的 Riot API Key"
-              class="w-full bg-dark-300 border border-dark-300 rounded-lg px-4 py-3 focus:outline-none focus:border-hextech-100"
-            />
-            <p class="text-xs text-gray-500 mt-1">
-              在 <a href="https://developer.riotgames.com/" target="_blank" class="text-hextech-100 hover:underline">Riot Developer Portal</a> 获取
-            </p>
           </div>
 
           <!-- Search Button -->
@@ -85,14 +121,13 @@
         <div class="bg-dark-200 rounded-xl p-6 shadow-lg">
           <div class="flex items-center space-x-6">
             <img 
-              :src="`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${summoner.profileIconId}.png`"
+              :src="summoner.icon"
               :alt="summoner.name"
               class="w-24 h-24 rounded-full border-4 border-hextech-100"
             />
             <div>
-              <h2 class="text-2xl font-bold">{{ summoner.gameName }}#{{ summoner.tagLine }}</h2>
-              <p class="text-gray-400">召唤师等级：{{ summoner.summonerLevel }}</p>
-              <p class="text-gray-400 text-sm">PUUID: {{ summoner.puuid.substring(0, 20) }}...</p>
+              <h2 class="text-2xl font-bold">{{ summoner.displayName }}</h2>
+              <p class="text-gray-400">等级：{{ summoner.level }} | 大区：{{ summoner.server }}</p>
             </div>
           </div>
 
@@ -126,7 +161,7 @@
         <div class="space-y-4">
           <div 
             v-for="match in matches" 
-            :key="match.metadata.matchId"
+            :key="match.id || match.metadata?.matchId"
             :class="['bg-dark-200 rounded-xl p-6 shadow-lg', getMatchResultClass(match)]"
           >
             <div class="flex items-center justify-between mb-4">
@@ -134,24 +169,24 @@
                 <span :class="['px-3 py-1 rounded text-sm font-semibold', getMatchResultBadgeClass(match)]">
                   {{ getMatchResult(match) ? '胜利' : '失败' }}
                 </span>
-                <span class="text-gray-400">{{ formatMatchDuration(match.info.gameDuration) }}</span>
-                <span class="text-gray-500 text-sm">{{ new Date(match.info.gameCreation).toLocaleString('zh-CN') }}</span>
+                <span class="text-gray-400">{{ formatMatchDuration(match.duration || match.info?.gameDuration) }}</span>
+                <span class="text-gray-500 text-sm">{{ formatMatchTime(match.time || match.info?.gameCreation) }}</span>
               </div>
-              <span class="text-gray-400 text-sm">{{ getQueueName(match.info.queueId) }}</span>
+              <span class="text-gray-400 text-sm">{{ getQueueName(match.mode || match.info?.queueId) }}</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <!-- Champion & KDA -->
               <div class="flex items-center space-x-3">
                 <img 
-                  :src="getChampionImage(match)"
-                  :alt="getChampionName(match)"
+                  :src="match.championImage"
+                  :alt="match.champion"
                   class="w-12 h-12 rounded"
                 />
                 <div>
-                  <div class="font-semibold">{{ getChampionName(match) }}</div>
+                  <div class="font-semibold">{{ match.champion }}</div>
                   <div class="text-sm text-gray-400">
-                    {{ getKDA(match) }} 
+                    {{ match.kda }} 
                     <span class="text-gray-500">KDA</span>
                   </div>
                 </div>
@@ -160,9 +195,9 @@
               <!-- Items -->
               <div class="flex items-center space-x-2">
                 <img 
-                  v-for="itemId in getPlayerItems(match)" 
+                  v-for="itemId in match.items" 
                   :key="itemId"
-                  :src="`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/item/${itemId}.png`"
+                  :src="getItemImage(itemId)"
                   :alt="`Item ${itemId}`"
                   class="w-8 h-8 rounded"
                 />
@@ -170,8 +205,8 @@
 
               <!-- Stats -->
               <div class="text-sm text-gray-400">
-                <div>补刀：{{ getCS(match) }} | 伤害：{{ formatNumber(getDamage(match)) }}</div>
-                <div>金币：{{ formatNumber(getGold(match)) }}</div>
+                <div>补刀：{{ match.cs }} | 伤害：{{ formatNumber(match.damage) }}</div>
+                <div>金币：{{ formatNumber(match.gold) }}</div>
               </div>
             </div>
           </div>
@@ -196,14 +231,18 @@
 
 <script>
 import axios from 'axios'
+import cnApi from './services/cnApi'
 
 export default {
   name: 'App',
   data() {
     return {
-      riotId: '',
+      serverType: 'cn',
+      summonerName: '',
       apiKey: '',
       selectedRegion: 'kr',
+      selectedCnServer: 1,
+      cnServers: cnApi.getServers(),
       loading: false,
       error: null,
       summoner: null,
@@ -213,14 +252,13 @@ export default {
   },
   methods: {
     async searchSummoner() {
-      if (!this.riotId || !this.apiKey) {
-        this.error = '请输入 Riot ID 和 API Key'
+      if (!this.summonerName) {
+        this.error = '请输入召唤师名称'
         return
       }
 
-      const [gameName, tagLine] = this.riotId.split('#')
-      if (!gameName || !tagLine) {
-        this.error = 'Riot ID 格式错误，应为：游戏名#标签'
+      if (this.serverType === 'intl' && !this.apiKey) {
+        this.error = '国际服需要输入 API Key'
         return
       }
 
@@ -231,54 +269,11 @@ export default {
       this.matches = null
 
       try {
-        // Step 1: Get account info by Riot ID
-        const accountUrl = `https://${this.selectedRegion}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`
-        const accountRes = await axios.get(accountUrl, {
-          headers: { 'X-Riot-Token': this.apiKey }
-        })
-        const account = accountRes.data
-
-        // Step 2: Get summoner info by PUUID
-        const summonerUrl = `https://${this.selectedRegion === 'americas' || this.selectedRegion === 'europe' || this.selectedRegion === 'asia' ? this.getPlatformForRegion() : this.selectedRegion}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`
-        const summonerRes = await axios.get(summonerUrl, {
-          headers: { 'X-Riot-Token': this.apiKey }
-        })
-        this.summoner = {
-          ...summonerRes.data,
-          gameName: account.gameName,
-          tagLine: account.tagLine
+        if (this.serverType === 'cn') {
+          await this.searchCnSummoner()
+        } else {
+          await this.searchIntlSummoner()
         }
-
-        // Step 3: Get ranked info
-        try {
-          const rankedUrl = `https://${this.selectedRegion === 'americas' || this.selectedRegion === 'europe' || this.selectedRegion === 'asia' ? this.getPlatformForRegion() : this.selectedRegion}.api.riotgames.com/lol/league/v4/entries/by-summoner/${this.summoner.id}`
-          const rankedRes = await axios.get(rankedUrl, {
-            headers: { 'X-Riot-Token': this.apiKey }
-          })
-          this.rankedInfo = rankedRes.data.filter(q => q.queueType === 'RANKED_SOLO_5x5' || q.queueType === 'RANKED_FLEX_SR')
-        } catch (e) {
-          console.log('No ranked info')
-        }
-
-        // Step 4: Get match history
-        const matchIdsUrl = `https://${this.selectedRegion}.api.riotgames.com/lol/match/v5/matches/by-puuid/${this.summoner.puuid}/ids?start=0&count=10`
-        const matchIdsRes = await axios.get(matchIdsUrl, {
-          headers: { 'X-Riot-Token': this.apiKey }
-        })
-        
-        // Get match details
-        const matchDetails = await Promise.all(
-          matchIdsRes.data.slice(0, 5).map(async (matchId) => {
-            const matchUrl = `https://${this.selectedRegion}.api.riotgames.com/lol/match/v5/matches/${matchId}`
-            const matchRes = await axios.get(matchUrl, {
-              headers: { 'X-Riot-Token': this.apiKey }
-            })
-            return matchRes.data
-          })
-        )
-        
-        this.matches = matchDetails
-
       } catch (err) {
         console.error(err)
         if (err.response?.status === 401) {
@@ -295,13 +290,115 @@ export default {
       }
     },
 
+    async searchCnSummoner() {
+      // Step 1: Search summoner
+      const summonerData = await cnApi.searchSummoner(this.selectedCnServer, this.summonerName)
+      
+      this.summoner = {
+        id: summonerData.id,
+        name: summonerData.name,
+        displayName: `${summonerData.name} (${summonerData.serverName})`,
+        level: summonerData.level,
+        server: summonerData.serverName,
+        icon: `https://game.gtimg.cn/images/lol/act/img/profileicon/${summonerData.iconId}.png`,
+        puuid: summonerData.puuid,
+        serverId: summonerData.serverId
+      }
+
+      // Step 2: Get rank info
+      try {
+        this.rankedInfo = await cnApi.getRankInfo(this.selectedCnServer, summonerData.id)
+      } catch (e) {
+        console.log('No rank info')
+      }
+
+      // Step 3: Get match list
+      const matchList = await cnApi.getMatchList(this.selectedCnServer, summonerData.id, 10)
+      
+      if (matchList && matchList.length > 0) {
+        this.matches = matchList.map(match => ({
+          id: match.matchId,
+          time: match.matchTime * 1000,
+          duration: match.matchLength,
+          mode: match.mode,
+          champion: cnApi.getChampionName(match.championId),
+          championImage: cnApi.getChampionImage(match.championId),
+          kda: `${match.kills}/${match.deaths}/${match.assists}`,
+          items: [match.item0, match.item1, match.item2, match.item3, match.item4, match.item5, match.item6].filter(i => i !== 0),
+          cs: match.cs,
+          damage: match.damage,
+          gold: match.gold,
+          win: match.result === 1
+        }))
+      }
+    },
+
+    async searchIntlSummoner() {
+      const [gameName, tagLine] = this.summonerName.split('#')
+      if (!gameName || !tagLine) {
+        this.error = 'Riot ID 格式错误，应为：游戏名#标签'
+        throw new Error('Invalid Riot ID format')
+      }
+
+      // Step 1: Get account info by Riot ID
+      const accountUrl = `https://${this.selectedRegion}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`
+      const accountRes = await axios.get(accountUrl, {
+        headers: { 'X-Riot-Token': this.apiKey }
+      })
+      const account = accountRes.data
+
+      // Step 2: Get summoner info by PUUID
+      const platform = this.getPlatformForRegion()
+      const summonerUrl = `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${account.puuid}`
+      const summonerRes = await axios.get(summonerUrl, {
+        headers: { 'X-Riot-Token': this.apiKey }
+      })
+      
+      this.summoner = {
+        ...summonerRes.data,
+        displayName: `${account.gameName}#${account.tagLine}`,
+        server: this.selectedRegion,
+        icon: `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${summonerRes.data.profileIconId}.png`
+      }
+
+      // Step 3: Get ranked info
+      try {
+        const rankedUrl = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-summoner/${this.summoner.id}`
+        const rankedRes = await axios.get(rankedUrl, {
+          headers: { 'X-Riot-Token': this.apiKey }
+        })
+        this.rankedInfo = rankedRes.data.filter(q => q.queueType === 'RANKED_SOLO_5x5' || q.queueType === 'RANKED_FLEX_SR')
+      } catch (e) {
+        console.log('No ranked info')
+      }
+
+      // Step 4: Get match history
+      const matchIdsUrl = `https://${this.selectedRegion}.api.riotgames.com/lol/match/v5/matches/by-puuid/${this.summoner.puuid}/ids?start=0&count=10`
+      const matchIdsRes = await axios.get(matchIdsUrl, {
+        headers: { 'X-Riot-Token': this.apiKey }
+      })
+      
+      // Get match details
+      const matchDetails = await Promise.all(
+        matchIdsRes.data.slice(0, 5).map(async (matchId) => {
+          const matchUrl = `https://${this.selectedRegion}.api.riotgames.com/lol/match/v5/matches/${matchId}`
+          const matchRes = await axios.get(matchUrl, {
+            headers: { 'X-Riot-Token': this.apiKey }
+          })
+          return matchRes.data
+        })
+      )
+      
+      this.matches = matchDetails
+    },
+
     getPlatformForRegion() {
       const mapping = {
         'americas': 'na1',
         'europe': 'euw1',
         'asia': 'sg2'
       }
-      return mapping[this.selectedRegion] || 'na1'
+      return mapping[this.selectedRegion] || this.selectedRegion
     },
 
     getQueueName(queueType) {
@@ -312,9 +409,34 @@ export default {
         '440': '灵活排位',
         '430': '匹配模式',
         '450': '大乱斗',
-        '1700': '斗魂竞技场'
+        '1700': '斗魂竞技场',
+        '1': '召唤师峡谷',
+        '2': '召唤师峡谷',
+        '4': '排位赛',
+        '6': '大乱斗',
+        '8': '3v3',
+        '9': '统治战场',
+        '14': '末日人机',
+        '16': '克隆模式',
+        '17': '飞升模式',
+        '19': '冰雪大乱斗',
+        '23': '魄罗大乱斗',
+        '30': '枢纽攻防战',
+        '32': '克隆大作战',
+        '33': '超频行动',
+        '34': '诺克萨斯',
+        '35': '魄罗王',
+        '36': '血月猎杀',
+        '37': '征召模式',
+        '38': '黑暗之星',
+        '41': '无限火力',
+        '52': '无限乱斗',
+        '61': '冠军杯赛',
+        '700': '斗魂竞技场',
+        '1090': '无限火力',
+        '1111': '特殊模式'
       }
-      return names[queueType] || `模式 ${queueType}`
+      return names[queueType] || (typeof queueType === 'string' ? queueType : `模式 ${queueType}`)
     },
 
     getTierName(tier) {
@@ -328,7 +450,8 @@ export default {
         'DIAMOND': '璀璨钻石',
         'MASTER': '超凡大师',
         'GRANDMASTER': '傲世宗师',
-        'CHALLENGER': '最强王者'
+        'CHALLENGER': '最强王者',
+        '': '未定级'
       }
       return names[tier] || tier
     },
@@ -347,8 +470,14 @@ export default {
     },
 
     getMatchResult(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      return participant ? participant.win : false
+      if (match.win !== undefined) {
+        return match.win
+      }
+      if (this.serverType === 'intl' && this.summoner?.puuid) {
+        const participant = match.info?.participants?.find(p => p.puuid === this.summoner.puuid)
+        return participant ? participant.win : false
+      }
+      return false
     },
 
     getMatchResultClass(match) {
@@ -360,69 +489,26 @@ export default {
     },
 
     formatMatchDuration(seconds) {
+      if (!seconds) return '未知'
       const mins = Math.floor(seconds / 60)
       return `${mins}分钟`
     },
 
-    getKDA(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      if (!participant) return '0/0/0'
-      return `${participant.kills}/${participant.deaths}/${participant.assists}`
+    formatMatchTime(timestamp) {
+      if (!timestamp) return ''
+      const date = new Date(timestamp)
+      return date.toLocaleString('zh-CN')
     },
 
-    getChampionName(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      return participant ? this.getChampionNameById(participant.championId) : 'Unknown'
-    },
-
-    getChampionNameById(id) {
-      // Simple mapping - in production, fetch from data dragon
-      const champions = {
-        1: '安妮', 2: '奥利安娜', 3: '加里奥', 4: '崔斯特', 5: ' Xin Zhao',
-        103: '阿狸', 157: '亚索', 238: '劫', 555: '派克', 777: '永恩',
-        236: '卢锡安', 222: '金克丝', 67: '薇恩', 81: '伊泽瑞尔', 51: '凯特琳'
+    getItemImage(itemId) {
+      if (this.serverType === 'cn') {
+        return cnApi.getItemImage(itemId)
       }
-      return champions[id] || `英雄${id}`
-    },
-
-    getChampionImage(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      if (!participant) return ''
-      return `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${this.getChampionNameById(participant.championId)}.png`
-    },
-
-    getPlayerItems(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      if (!participant) return []
-      return [
-        participant.item0,
-        participant.item1,
-        participant.item2,
-        participant.item3,
-        participant.item4,
-        participant.item5
-      ].filter(i => i !== 0)
-    },
-
-    getCS(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      if (!participant) return 0
-      return participant.totalMinionsKilled + participant.neutralMinionsKilled
-    },
-
-    getDamage(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      if (!participant) return 0
-      return participant.totalDamageDealtToChampions
-    },
-
-    getGold(match) {
-      const participant = match.info.participants.find(p => p.puuid === this.summoner.puuid)
-      if (!participant) return 0
-      return participant.goldEarned
+      return `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/item/${itemId}.png`
     },
 
     formatNumber(num) {
+      if (!num) return '0'
       if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
       if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
       return num.toString()
