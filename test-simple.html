@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>测试国服 API</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a2e; color: white; }
+    .test { margin: 10px 0; padding: 10px; background: #16213e; }
+    button { padding: 8px 16px; margin: 5px; background: #0ac8b9; border: none; cursor: pointer; }
+    pre { background: #0f3460; padding: 10px; max-height: 300px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>国服 API 测试</h1>
+  
+  <div class="test">
+    <h3>测试 API 1: zmMcnTargetContentList</h3>
+    <input id="name1" value="TheShy" placeholder="召唤师名">
+    <button onclick="test1()">测试</button>
+    <pre id="r1">等待...</pre>
+  </div>
+  
+  <div class="test">
+    <h3>测试 API 2: charmrank</h3>
+    <input id="name2" value="TheShy" placeholder="召唤师名">
+    <button onclick="test2()">测试</button>
+    <pre id="r2">等待...</pre>
+  </div>
+  
+  <div class="test">
+    <h3>测试 API 3: search</h3>
+    <input id="name3" value="TheShy" placeholder="召唤师名">
+    <button onclick="test3()">测试</button>
+    <pre id="r3">等待...</pre>
+  </div>
+
+  <script>
+    async function test1() {
+      const r = document.getElementById('r1')
+      const name = document.getElementById('name1').value
+      r.textContent = '加载中...'
+      try {
+        const res = await fetch(`/api/cn/cmc/zmMcnTargetContentList?r0=133&page=1&num=10&target=2&source=web_pc&cid=1&name=${encodeURIComponent(name)}`)
+        const json = await res.json()
+        r.textContent = JSON.stringify(json, null, 2)
+      } catch(e) {
+        r.textContent = 'Error: ' + e.message
+      }
+    }
+    
+    async function test2() {
+      const r = document.getElementById('r2')
+      const name = document.getElementById('name2').value
+      r.textContent = '加载中...'
+      try {
+        const res = await fetch(`/api/cn/cmc/charmrank?cid=1&page=1&num=10&name=${encodeURIComponent(name)}`)
+        const json = await res.json()
+        r.textContent = JSON.stringify(json, null, 2)
+      } catch(e) {
+        r.textContent = 'Error: ' + e.message
+      }
+    }
+    
+    async function test3() {
+      const r = document.getElementById('r3')
+      const name = document.getElementById('name3').value
+      r.textContent = '加载中...'
+      try {
+        const res = await fetch(`/api/cn/cmc/search?source=web_pc&cid=1&name=${encodeURIComponent(name)}`)
+        const json = await res.json()
+        r.textContent = JSON.stringify(json, null, 2)
+      } catch(e) {
+        r.textContent = 'Error: ' + e.message
+      }
+    }
+  </script>
+</body>
+</html>

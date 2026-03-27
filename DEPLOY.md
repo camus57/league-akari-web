@@ -1,109 +1,190 @@
-# LeagueAkari Web 部署指南
+# LeagueAkari Web - 部署说明
 
-## 项目已完成构建 ✅
+## ⚠️ 重要说明：国服 API 限制
 
-项目已成功构建，输出目录：`dist/`
+由于腾讯游戏的反爬虫措施，**国服战绩查询功能需要后端代理服务器**才能正常工作。
 
-## 部署到 GitHub 的步骤
+### 问题原因
+- 腾讯 API (`apps.game.qq.com`) 有严格的 CORS 限制
+- 需要特定的 Referer 和 User-Agent 头
+- 纯前端无法直接访问
 
-### 1. 创建 GitHub 仓库
+### 解决方案
 
-1. 访问 https://github.com/new
-2. 仓库名称：`league-akari-web`
-3. 设置为 **Public**
-4. **不要** 勾选 "Add a README file"
-5. 点击 "Create repository"
+#### 方案 1: 使用提供的 Node.js 代理服务器（推荐）
 
-### 2. 初始化并推送代码
+1. **安装依赖**
+   ```bash
+   cd league-akari-web
+   npm install express axios cors
+   ```
 
-在项目目录下执行以下命令：
+2. **启动代理服务器**
+   ```bash
+   node proxy-server.js
+   ```
+
+3. **修改 API 配置**
+   编辑 `src/services/cnApi.js`，将 API 请求指向代理服务器：
+   ```javascript
+   const API_BASE = 'http://localhost:3001/proxy'
+   ```
+
+4. **重新构建**
+   ```bash
+   npm run build
+   ```
+
+#### 方案 2: 仅使用国际服功能
+
+如果不需要国服功能，可以直接部署到 GitHub Pages，国际服功能完全可用。
+
+#### 方案 3: 使用第三方 API
+
+考虑使用已公开的英雄联盟 API 服务（如 OP.GG、U.GG 等的非官方 API）。
+
+---
+
+## 国际服部署（无需后端）
+
+### GitHub Pages 部署
+
+1. **推送代码**
+   ```bash
+   git push origin main
+   ```
+
+2. **启用 Pages**
+   - 访问 https://github.com/YOUR_USERNAME/league-akari-web/settings/pages
+   - Source: GitHub Actions
+
+3. **访问网站**
+   ```
+   https://YOUR_USERNAME.github.io/league-akari-web/
+   ```
+
+### Vercel / Netlify 部署
+
+1. 连接 GitHub 仓库
+2. 自动构建部署
+3. 获得 HTTPS 域名
+
+---
+
+## 完整后端部署（支持国服）
+
+### Docker 部署
+
+```dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY . .
+
+EXPOSE 3000 3001
+
+CMD ["sh", "-c", "node proxy-server.js & npm start"]
+```
+
+### 环境变量
 
 ```bash
-cd /home/admin/openclaw/workspace/league-akari-web
+# 代理服务器配置
+PORT=3001
+ALLOWED_ORIGINS=https://your-domain.com
 
-# 初始化 Git
-git init
-
-# 添加所有文件
-git add .
-
-# 提交
-git commit -m "feat: 初始版本 - LeagueAkari 网页版战绩查询"
-
-# 添加远程仓库 (替换 YOUR_USERNAME 为你的 GitHub 用户名)
-git remote add origin https://github.com/YOUR_USERNAME/league-akari-web.git
-
-# 推送
-git branch -M main
-git push -u origin main
+# Riot API Key（国际服）
+RIOT_API_KEY=your_api_key
 ```
 
-### 3. 启用 GitHub Pages
+---
 
-1. 进入仓库的 **Settings** → **Pages**
-2. 在 **Build and deployment** 部分：
-   - Source: 选择 **GitHub Actions**
-3. 等待部署完成（约 1-2 分钟）
+## 测试
 
-### 4. 访问网站
+### 本地测试
 
-部署完成后，你的网站将在以下地址可用：
+```bash
+# 启动开发服务器（带代理）
+npm run dev
+
+# 访问 http://localhost:5173/league-akari-web/
 ```
-https://YOUR_USERNAME.github.io/league-akari-web/
-```
 
-## 使用说明
+### 测试国服功能
 
-### 国服查询（无需 API Key）
-
-1. 选择 **国服** 选项卡
-2. 选择大区（如：艾欧尼亚、黑色玫瑰等）
-3. 输入召唤师名称
-4. 点击查询
-
-### 国际服查询
-
-1. 选择 **国际服** 选项卡
-2. 访问 [Riot Developer Portal](https://developer.riotgames.com/)
-3. 登录获取 **Personal API Key**
-4. 在网站上输入：
-   - Riot ID (格式：游戏名#标签，例如：Faker#KR1)
-   - 选择赛区
-   - 输入 API Key
+1. 确保代理服务器运行
+2. 选择「国服」选项卡
+3. 选择大区
+4. 输入召唤师名称
 5. 点击查询
 
-## 注意事项
+---
 
-- **国服**：无需 API Key，直接查询全部 34 个大区
-- **国际服 API Key 限制**: 开发用 Key 有速率限制 (20 请求/秒，100 请求/2 分钟)
-- **不要将 API Key 提交到 Git**: `.env` 文件已在 `.gitignore` 中
-- **生产环境**: 如需正式部署，请申请 Production API Key
+## 故障排除
 
-## 自定义配置
+### 国服查询失败
 
-如需修改部署路径，编辑 `vite.config.js` 中的 `base` 选项：
+**错误**: "查询失败：Failed to fetch"
 
-```js
-export default defineConfig({
-  base: '/你的仓库名/',  // 例如：'/league-akari-web/'
-  // ...
-})
+**原因**: 代理服务器未运行或配置错误
+
+**解决**:
+1. 检查代理服务器是否运行：`node proxy-server.js`
+2. 检查 `src/services/cnApi.js` 中的 API_BASE 配置
+3. 检查浏览器控制台错误
+
+### 国际服查询失败
+
+**错误**: "API Key 无效"
+
+**解决**:
+1. 访问 https://developer.riotgames.com/
+2. 重新获取 API Key
+3. 注意 Key 的速率限制
+
+### 构建失败
+
+```bash
+# 清理并重新安装
+rm -rf node_modules package-lock.json
+npm install
+npm run build
 ```
 
-## 功能特性
+---
 
-- ✅ **国服支持** - 全部 34 个大区，无需 API Key
-- ✅ **国际服支持** - 韩服、日服、欧服、美服、亚服
-- ✅ 显示召唤师信息和等级
-- ✅ 显示排位赛段位和胜率
-- ✅ 展示近期比赛详情（国服 10 场，国际服 5 场）
-- ✅ 显示英雄、KDA、装备、补刀、伤害等数据
-- ✅ 响应式设计，支持移动端
-- ✅ 一键切换国服/国际服
+## API 参考
 
-## 技术栈
+### 国服 API 端点
 
-- Vue 3 + Vite
-- Tailwind CSS
-- Axios
-- Riot Games API v5
+```
+GET /cmc/zmMcnTargetContentList
+参数：r0, page, num, target, source, cid, name
+
+GET /cmc/matchlist
+参数：cid, uid, begidx, cnt
+
+GET /cmc/rank
+参数：cid, uid
+```
+
+### 国际服 API 端点
+
+```
+GET /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}
+GET /lol/summoner/v4/summoners/by-puuid/{puuid}
+GET /lol/match/v5/matches/by-puuid/{puuid}/ids
+GET /lol/match/v5/matches/{matchId}
+```
+
+---
+
+## 许可证
+
+MIT
+
+## 免责声明
+
+本项目仅供学习研究使用，不是 Riot Games 或腾讯的官方产品。

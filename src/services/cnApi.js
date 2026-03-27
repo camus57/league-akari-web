@@ -1,10 +1,7 @@
 /**
  * 国服英雄联盟 API 服务
- * 使用掌盟/WeGame 接口 + CORS 代理
+ * 使用多个 API 源备用
  */
-
-// 使用 CORS 代理来解决跨域问题
-const CORS_PROXY = 'https://api.allorigins.win/raw?url='
 
 // 国服大区列表
 const CN_SERVERS = [
@@ -44,7 +41,7 @@ const CN_SERVERS = [
   { id: 34, name: '峡谷之巅' }
 ]
 
-// 英雄数据缓存
+// 英雄数据
 let championMap = new Map()
 
 class CNApiService {
@@ -52,194 +49,158 @@ class CNApiService {
     this.loadGameData()
   }
 
-  // 加载游戏数据
   async loadGameData() {
     try {
-      // 从腾讯 CDN 加载英雄数据
-      const response = await fetch('https://game.gtimg.cn/images/lol/act/img/champion-list.json')
-      const data = await response.json()
-      
-      if (data && Array.isArray(data.list)) {
-        data.list.forEach(champ => {
-          championMap.set(String(champ.id), {
-            name: champ.name,
-            key: champ.alias,
-            image: `https://game.gtimg.cn/images/lol/act/img/champion/${champ.alias}.png`
+      const res = await fetch('https://game.gtimg.cn/images/lol/act/img/champion-list.json')
+      const data = await res.json()
+      if (data?.list) {
+        data.list.forEach(c => {
+          championMap.set(String(c.id), {
+            name: c.name,
+            key: c.alias,
+            image: `https://game.gtimg.cn/images/lol/act/img/champion/${c.alias}.png`
           })
         })
       }
-      console.log('国服英雄数据加载完成:', championMap.size)
     } catch (e) {
-      console.error('加载英雄数据失败:', e)
-      this.loadFallbackChampions()
+      console.error('加载英雄失败:', e)
     }
   }
 
-  // 备用英雄数据
-  loadFallbackChampions() {
-    const fallback = [
-      { id: '1', name: '安妮', key: 'Annie' },
-      { id: '2', name: '奥利安娜', key: 'Orianna' },
-      { id: '103', name: '阿狸', key: 'Ahri' },
-      { id: '157', name: '亚索', key: 'Yasuo' },
-      { id: '238', name: '劫', key: 'Zed' },
-      { id: '777', name: '永恩', key: 'Yone' },
-      { id: '555', name: '派克', key: 'Pyke' },
-      { id: '236', name: '卢锡安', key: 'Lucian' },
-      { id: '222', name: '金克丝', key: 'Jinx' },
-      { id: '67', name: '薇恩', key: 'Vayne' },
-      { id: '81', name: '伊泽瑞尔', key: 'Ezreal' },
-      { id: '51', name: '凯特琳', key: 'Caitlyn' },
-      { id: '412', name: '锤石', key: 'Thresh' },
-      { id: '64', name: '李青', key: 'LeeSin' },
-      { id: '11', name: '易', key: 'MasterYi' },
-      { id: '99', name: '拉克丝', key: 'Lux' },
-      { id: '122', name: '德莱厄斯', key: 'Darius' },
-      { id: '86', name: '盖伦', key: 'Garen' }
-    ]
-    fallback.forEach(c => {
-      championMap.set(c.id, {
-        name: c.name,
-        key: c.key,
-        image: `https://game.gtimg.cn/images/lol/act/img/champion/${c.key}.png`
-      })
-    })
-  }
-
-  // 获取所有大区
   getServers() {
     return CN_SERVERS
   }
 
-  // 根据 ID 获取大区
   getServerById(id) {
     return CN_SERVERS.find(s => s.id === parseInt(id))
   }
 
-  // 查询召唤师
+  // 查询召唤师 - 尝试多个 API
   async searchSummoner(serverId, summonerName) {
+    console.log('[CN] 查询:', serverId, summonerName)
+    
+    // API 1: 掌盟搜索
     try {
-      // 使用掌盟 API 通过 CORS 代理
-      const url = `https://apps.game.qq.com/cmc/zmMcnTargetContentList?r0=133&page=1&num=10&target=2&source=web_pc&cid=${serverId}&name=${encodeURIComponent(summonerName)}`
+      const url = `/api/cn/cmc/zmMcnTargetContentList?r0=133&page=1&num=10&target=2&source=web_pc&cid=${serverId}&name=${encodeURIComponent(summonerName)}`
+      const res = await fetch(url)
+      const json = await res.json()
       
-      const response = await fetch(CORS_PROXY + encodeURIComponent(url))
-      const json = await response.json()
+      console.log('[CN] API1 响应:', json)
       
-      if (json && json.data && json.data.list && json.data.list.length > 0) {
+      if (json?.data?.list?.length > 0) {
         const data = json.data.list[0]
         return {
           id: data.targetId,
           name: data.targetName,
           serverId: parseInt(serverId),
-          serverName: this.getServerById(serverId)?.name || '未知',
+          serverName: this.getServerById(serverId)?.name,
           level: parseInt(data.level) || 0,
           iconId: data.iconId || 1,
           puuid: data.targetId
         }
       }
-      
-      throw new Error('未找到该召唤师')
     } catch (e) {
-      console.error('查询召唤师失败:', e)
-      if (e.message === '未找到该召唤师') {
-        throw e
-      }
-      throw new Error(`查询失败：${e.message}`)
+      console.warn('[CN] API1 失败:', e.message)
     }
+    
+    // API 2: 直接搜索
+    try {
+      const url = `/api/cn/cmc/search?source=web_pc&cid=${serverId}&name=${encodeURIComponent(summonerName)}`
+      const res = await fetch(url)
+      const json = await res.json()
+      
+      if (json?.data?.list?.length > 0) {
+        const data = json.data.list[0]
+        return {
+          id: data.targetId,
+          name: data.targetName,
+          serverId: parseInt(serverId),
+          serverName: this.getServerById(serverId)?.name,
+          level: parseInt(data.level) || 0,
+          iconId: data.iconId || 1,
+          puuid: data.targetId
+        }
+      }
+    } catch (e) {
+      console.warn('[CN] API2 失败:', e.message)
+    }
+    
+    throw new Error('未找到该召唤师，请检查大区或名称是否正确')
   }
 
-  // 获取排位信息
   async getRankInfo(serverId, summonerId) {
     try {
-      const url = `https://apps.game.qq.com/cmc/rank?cid=${serverId}&uid=${summonerId}`
-      const response = await fetch(CORS_PROXY + encodeURIComponent(url))
-      const json = await response.json()
+      const url = `/api/cn/cmc/rank?cid=${serverId}&uid=${summonerId}`
+      const res = await fetch(url)
+      const json = await res.json()
       
-      if (json && json.data) {
-        const data = json.data
+      if (json?.data) {
         return [{
           queueType: 'RANKED_SOLO_5x5',
-          tier: data.tier || '',
-          rank: data.rank || '',
-          leaguePoints: data.lp || 0,
-          wins: data.wins || 0,
-          losses: data.losses || 0
+          tier: json.data.tier || '',
+          rank: json.data.rank || '',
+          leaguePoints: json.data.lp || 0,
+          wins: json.data.wins || 0,
+          losses: json.data.losses || 0
         }]
       }
-      return []
     } catch (e) {
-      console.error('获取排位信息失败:', e)
-      return []
+      console.warn('[CN] 排位查询失败:', e.message)
     }
+    return []
   }
 
-  // 获取比赛列表
   async getMatchList(serverId, summonerId, count = 10) {
     try {
-      const url = `https://apps.game.qq.com/cmc/matchlist?cid=${serverId}&uid=${summonerId}&begidx=0&cnt=${count}`
-      const response = await fetch(CORS_PROXY + encodeURIComponent(url))
-      const json = await response.json()
+      const url = `/api/cn/cmc/matchlist?cid=${serverId}&uid=${summonerId}&begidx=0&cnt=${count}`
+      const res = await fetch(url)
+      const json = await res.json()
       
-      if (json && json.data && json.data.matchList) {
-        return json.data.matchList.map(match => ({
-          matchId: match.matchId,
-          matchTime: match.matchTime,
-          matchLength: match.matchLength,
-          mode: this.getModeName(match.mode),
-          championId: match.championId,
-          kills: match.kills || 0,
-          deaths: match.deaths || 0,
-          assists: match.assists || 0,
-          item0: match.item0 || 0,
-          item1: match.item1 || 0,
-          item2: match.item2 || 0,
-          item3: match.item3 || 0,
-          item4: match.item4 || 0,
-          item5: match.item5 || 0,
-          item6: match.item6 || 0,
-          cs: match.cs || 0,
-          damage: match.damage || 0,
-          gold: match.gold || 0,
-          result: match.result
+      if (json?.data?.matchList) {
+        return json.data.matchList.map(m => ({
+          matchId: m.matchId,
+          matchTime: m.matchTime,
+          matchLength: m.matchLength,
+          mode: this.getModeName(m.mode),
+          championId: m.championId,
+          kills: m.kills || 0,
+          deaths: m.deaths || 0,
+          assists: m.assists || 0,
+          item0: m.item0 || 0,
+          item1: m.item1 || 0,
+          item2: m.item2 || 0,
+          item3: m.item3 || 0,
+          item4: m.item4 || 0,
+          item5: m.item5 || 0,
+          item6: m.item6 || 0,
+          cs: m.cs || 0,
+          damage: m.damage || 0,
+          gold: m.gold || 0,
+          result: m.result
         }))
       }
-      return []
     } catch (e) {
-      console.error('获取比赛列表失败:', e)
-      return []
+      console.warn('[CN] 比赛列表失败:', e.message)
     }
+    return []
   }
 
-  // 获取模式名称
   getModeName(mode) {
     const modes = {
-      '1': '召唤师峡谷',
-      '2': '召唤师峡谷',
-      '4': '排位赛',
-      '6': '大乱斗',
-      '8': '3v3',
-      '430': '匹配模式',
-      '420': '单/双排',
-      '440': '灵活排位',
-      '450': '大乱斗',
-      '1700': '斗魂竞技场'
+      '1': '召唤师峡谷', '420': '单/双排', '430': '匹配模式',
+      '440': '灵活排位', '450': '大乱斗', '1700': '斗魂竞技场'
     }
     return modes[mode] || `模式 ${mode}`
   }
 
-  // 获取英雄名称
   getChampionName(id) {
-    const champ = championMap.get(String(id))
-    return champ ? champ.name : `英雄${id}`
+    return championMap.get(String(id))?.name || `英雄${id}`
   }
 
-  // 获取英雄图片
   getChampionImage(id) {
-    const champ = championMap.get(String(id))
-    return champ ? champ.image : `https://game.gtimg.cn/images/lol/act/img/champion/${id}.png`
+    return championMap.get(String(id))?.image || `https://game.gtimg.cn/images/lol/act/img/champion/${id}.png`
   }
 
-  // 获取物品图片
   getItemImage(id) {
     if (!id || id === 0) return ''
     return `https://game.gtimg.cn/images/lol/act/img/item/${id}.png`

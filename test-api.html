@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>国服 API 测试</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a2e; color: white; }
+    .test-section { margin: 20px 0; padding: 15px; background: #16213e; border-radius: 8px; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #0ac8b9; border: none; border-radius: 4px; color: #1a1a2e; font-weight: bold; }
+    button:hover { background: #0a9c92; }
+    pre { background: #0f3460; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    .error { color: #ff6b6b; }
+    .success { color: #51cf66; }
+  </style>
+</head>
+<body>
+  <h1>🔧 国服 API 测试工具</h1>
+  
+  <div class="test-section">
+    <h3>1. 测试 CORS 代理</h3>
+    <button onclick="testCors()">测试 allorigins.win</button>
+    <button onclick="testCors2()">测试 corsproxy.io</button>
+    <pre id="cors-result">点击按钮测试...</pre>
+  </div>
+
+  <div class="test-section">
+    <h3>2. 测试召唤师查询</h3>
+    <input type="text" id="server-id" value="1" placeholder="大区 ID" style="padding: 8px; width: 80px; margin-right: 10px;">
+    <input type="text" id="summoner-name" value="TheShy" placeholder="召唤师名称" style="padding: 8px; width: 200px; margin-right: 10px;">
+    <button onclick="testSummoner()">查询召唤师</button>
+    <pre id="summoner-result">点击按钮测试...</pre>
+  </div>
+
+  <div class="test-section">
+    <h3>3. 测试比赛列表</h3>
+    <input type="text" id="test-server-id" value="1" placeholder="大区 ID" style="padding: 8px; width: 80px; margin-right: 10px;">
+    <input type="text" id="test-summoner-id" value="12345" placeholder="召唤师 ID" style="padding: 8px; width: 200px; margin-right: 10px;">
+    <button onclick="testMatchList()">获取比赛列表</button>
+    <pre id="match-result">点击按钮测试...</pre>
+  </div>
+
+  <div class="test-section">
+    <h3>4. 测试英雄数据</h3>
+    <button onclick="testChampions()">加载英雄数据</button>
+    <pre id="champion-result">点击按钮测试...</pre>
+  </div>
+
+  <script>
+    const CORS_PROXIES = {
+      allorigins: 'https://api.allorigins.win/raw?url=',
+      corsproxy: 'https://corsproxy.io/?',
+      allorigins_get: 'https://api.allorigins.win/get?url='
+    }
+
+    async function testCors() {
+      const result = document.getElementById('cors-result')
+      result.textContent = '测试中...'
+      try {
+        const url = CORS_PROXIES.allorigins + encodeURIComponent('https://apps.game.qq.com/')
+        const response = await fetch(url)
+        result.innerHTML = `<span class="success">✅ allorigins.win 可用</span>\n状态：${response.status}\nURL: ${url}`
+      } catch (e) {
+        result.innerHTML = `<span class="error">❌ allorigins.win 失败</span>\n${e.message}`
+      }
+    }
+
+    async function testCors2() {
+      const result = document.getElementById('cors-result')
+      result.textContent = '测试中...'
+      try {
+        const url = CORS_PROXIES.corsproxy + encodeURIComponent('https://apps.game.qq.com/')
+        const response = await fetch(url)
+        result.innerHTML = `<span class="success">✅ corsproxy.io 可用</span>\n状态：${response.status}`
+      } catch (e) {
+        result.innerHTML = `<span class="error">❌ corsproxy.io 失败</span>\n${e.message}`
+      }
+    }
+
+    async function testSummoner() {
+      const result = document.getElementById('summoner-result')
+      const serverId = document.getElementById('server-id').value
+      const summonerName = document.getElementById('summoner-name').value
+      result.textContent = '查询中...'
+      
+      const url = `https://apps.game.qq.com/cmc/zmMcnTargetContentList?r0=133&page=1&num=10&target=2&source=web_pc&cid=${serverId}&name=${encodeURIComponent(summonerName)}`
+      
+      try {
+        // 尝试多种 CORS 代理
+        const proxies = [
+          CORS_PROXIES.allorigins,
+          CORS_PROXIES.corsproxy,
+          CORS_PROXIES.allorigins_get
+        ]
+        
+        for (const proxy of proxies) {
+          try {
+            const fullUrl = proxy + encodeURIComponent(url)
+            console.log('测试 URL:', fullUrl)
+            const response = await fetch(fullUrl)
+            const json = proxy.includes('get') ? JSON.parse(await response.text()).contents : await response.json()
+            
+            if (json && json.data && json.data.list && json.data.list.length > 0) {
+              result.innerHTML = `<span class="success">✅ 查询成功 (使用 ${proxy.split('/')[2]})</span>\n\n原始 URL:\n${url}\n\n响应数据:\n${JSON.stringify(json, null, 2)}`
+              return
+            }
+          } catch (e) {
+            console.log(`${proxy} 失败:`, e)
+          }
+        }
+        
+        result.innerHTML = `<span class="error">❌ 所有代理都失败了</span>\n\n尝试的 URL:\n${url}`
+      } catch (e) {
+        result.innerHTML = `<span class="error">❌ 查询失败</span>\n${e.message}\n\nURL: ${url}`
+      }
+    }
+
+    async function testMatchList() {
+      const result = document.getElementById('match-result')
+      const serverId = document.getElementById('test-server-id').value
+      const summonerId = document.getElementById('test-summoner-id').value
+      result.textContent = '查询中...'
+      
+      const url = `https://apps.game.qq.com/cmc/matchlist?cid=${serverId}&uid=${summonerId}&begidx=0&cnt=5`
+      
+      try {
+        const fullUrl = CORS_PROXIES.allorigins + encodeURIComponent(url)
+        const response = await fetch(fullUrl)
+        const json = await response.json()
+        result.innerHTML = `响应:\n${JSON.stringify(json, null, 2)}`
+      } catch (e) {
+        result.innerHTML = `<span class="error">❌ 失败</span>\n${e.message}`
+      }
+    }
+
+    async function testChampions() {
+      const result = document.getElementById('champion-result')
+      result.textContent = '加载中...'
+      
+      try {
+        const url = 'https://game.gtimg.cn/images/lol/act/img/champion-list.json'
+        const response = await fetch(url)
+        const json = await response.json()
+        
+        if (json && json.list) {
+          result.innerHTML = `<span class="success">✅ 加载成功</span>\n英雄数量：${json.list.length}\n\n前 10 个英雄:\n${JSON.stringify(json.list.slice(0, 10).map(c => ({ id: c.id, name: c.name, alias: c.alias })), null, 2)}`
+        }
+      } catch (e) {
+        result.innerHTML = `<span class="error">❌ 失败</span>\n${e.message}`
+      }
+    }
+
+    // 页面加载时自动测试 CORS
+    window.onload = () => {
+      testCors()
+    }
+  </script>
+</body>
+</html>
